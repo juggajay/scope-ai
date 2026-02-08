@@ -1,0 +1,106 @@
+import type { Question } from "@/types";
+
+export const laundryQuestions: Question[] = [
+  {
+    id: "layout_change",
+    question: "Are you changing the laundry layout?",
+    why: "Moving the washing machine or tub means relocating plumbing, which adds cost and complexity.",
+    options: [
+      { label: "No — keeping same layout" },
+      { label: "Minor tweaks" },
+      { label: "Complete redesign" },
+      { label: "Not sure yet" },
+    ],
+    multiSelect: false,
+    defaultIfSkipped: "Minor tweaks",
+  },
+  {
+    id: "laundry_size",
+    question: "What type of laundry space?",
+    why: "A dedicated laundry room has different scope than a European-style concealed laundry in a cupboard.",
+    options: [
+      { label: "Dedicated laundry room" },
+      { label: "Combined laundry + bathroom" },
+      { label: "European laundry (concealed in cupboard)" },
+      { label: "Laundry in garage" },
+    ],
+    multiSelect: false,
+    defaultIfSkipped: "Dedicated laundry room",
+  },
+  {
+    id: "cabinetry",
+    question: "What cabinetry do you want?",
+    why: "Cabinetry scope ranges from basic open shelves to full floor-to-ceiling fitted cabinetry with benchtop.",
+    options: [
+      { label: "Full cabinetry with benchtop" },
+      { label: "Base cabinets with benchtop, open above" },
+      { label: "Basic shelf and hanging rod" },
+      { label: "No cabinetry needed" },
+    ],
+    multiSelect: false,
+    defaultIfSkipped: "Full cabinetry with benchtop",
+  },
+  {
+    id: "tub_sink",
+    question: "Laundry tub or sink?",
+    why: "A laundry tub needs plumbing rough-in (hot, cold, waste). Some people are moving to smaller sinks or removing them entirely.",
+    options: [
+      { label: "Standard laundry tub" },
+      { label: "Undermount sink in benchtop" },
+      { label: "No tub or sink" },
+    ],
+    multiSelect: false,
+    defaultIfSkipped: "Standard laundry tub",
+  },
+  {
+    id: "dryer_type",
+    question: "What type of dryer?",
+    why: "Heat pump dryers need a condensate drain or tray. Vented dryers need a duct to outside. This affects both plumbing and building scope.",
+    options: [
+      { label: "Heat pump dryer (condensate)" },
+      { label: "Vented dryer (ducted to outside)" },
+      { label: "Condenser dryer (no duct needed)" },
+      { label: "No dryer" },
+      { label: "Not sure yet" },
+    ],
+    multiSelect: false,
+    defaultIfSkipped: "Not sure yet",
+  },
+  {
+    id: "flooring",
+    question: "What flooring?",
+    why: "Laundries are wet areas — tiles are the standard choice. Vinyl is an alternative but waterproofing requirements still apply.",
+    options: [
+      { label: "Tiles" },
+      { label: "Vinyl/luxury vinyl plank" },
+      { label: "Keeping existing" },
+    ],
+    multiSelect: false,
+    defaultIfSkipped: "Tiles",
+  },
+  {
+    id: "quality_tier",
+    question: "What quality level?",
+    why: "Sets realistic budget ranges for materials and finishes.",
+    options: [
+      { label: "Budget ($5-10K) — functional" },
+      { label: "Mid-range ($10-20K) — modern, matching home style" },
+      { label: "Premium ($20K+) — high-end finishes" },
+    ],
+    multiSelect: false,
+    defaultIfSkipped: "Mid-range ($10-20K) — modern, matching home style",
+  },
+  {
+    id: "diy_interest",
+    question: "Are you interested in doing any work yourself?",
+    why: "Some tasks like demolition and painting are safe and common for homeowners to DIY. We'll flag which items you could do yourself to save money.",
+    options: [
+      { label: "Yes — happy to do demo and painting" },
+      { label: "Maybe — tell me what's safe to DIY" },
+      { label: "No — I want tradies to do everything" },
+    ],
+    multiSelect: false,
+    defaultIfSkipped: "Maybe — tell me what's safe to DIY",
+    modeOnly: "trades",
+  },
+];
