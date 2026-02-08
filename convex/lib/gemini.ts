@@ -4,7 +4,8 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MODEL = "gemini-2.5-pro-preview-05-06";
+const VISION_MODEL = "gemini-2.5-pro";
+const TEXT_MODEL = "gemini-2.5-flash";
 
 interface InlineImage {
   data: string; // base64
@@ -21,8 +22,11 @@ export async function callGeminiVision(
 ): Promise<unknown> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: MODEL,
-    generationConfig: { responseMimeType: "application/json" },
+    model: VISION_MODEL,
+    generationConfig: {
+      responseMimeType: "application/json",
+      maxOutputTokens: 65536,
+    },
   });
 
   const parts = [
@@ -46,8 +50,11 @@ export async function callGeminiText(
 ): Promise<unknown> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: MODEL,
-    generationConfig: { responseMimeType: "application/json" },
+    model: TEXT_MODEL,
+    generationConfig: {
+      responseMimeType: "application/json",
+      maxOutputTokens: 65536,
+    },
   });
 
   const result = await model.generateContent(prompt);

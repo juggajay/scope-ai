@@ -454,6 +454,170 @@ async function generateCoordinationChecklist(
 }
 
 // =============================================================================
+// Admin: Regenerate All Scopes (for fixing stuck projects)
+// =============================================================================
+
+export const adminRegenerateScopes = internalAction({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY not set");
+
+    // Get project
+    const project = await ctx.runQuery(
+      internal.projects.getProjectInternal,
+      { projectId: args.projectId }
+    );
+    if (!project) throw new Error("Project not found");
+
+    // Determine required trades
+    const answers: QuestionAnswers = (project.answers as QuestionAnswers) ?? {};
+    const projectType = project.projectType as ProjectType;
+    const { trades } = determineRequiredTrades(projectType, answers);
+
+    // Delete all existing scopes for this project
+    for (const trade of trades) {
+      await ctx.runMutation(internal.scopes.deleteScopeByTradeInternal, {
+        projectId: args.projectId,
+        tradeType: trade,
+      });
+    }
+
+    // Reset project status to generating
+    await ctx.runMutation(internal.projects.updateProjectInternal, {
+      projectId: args.projectId,
+      updates: { status: "generating" },
+    });
+
+    // Re-run generation (reuse the existing generateScopes logic inline)
+    const qualityTier = parseQualityTier(answers["quality_tier"]);
+    const projectContext = JSON.stringify({
+      projectType,
+      mode: project.mode,
+      propertyDetails: {
+        suburb: project.propertySuburb,
+        state: project.propertyState,
+        type: project.propertyType,
+        yearBuilt: project.propertyAge,
+      },
+      photoAnalysis: project.photoAnalysis ?? null,
+      answers,
+      qualityTier,
+    });
+
+    const failed: string[] = [];
+    let completed = 0;
+    const scopeSummaries: { tradeType: string; title: string; itemCount: number }[] = [];
+
+    await ctx.runMutation(internal.projects.updateGenerationProgressInternal, {
+      projectId: args.projectId,
+      total: trades.length,
+      completed: 0,
+      current: TRADE_META[trades[0]].title,
+      failed: [],
+    });
+
+    for (const trade of trades) {
+      const tradePrompt = tradePrompts[trade];
+      if (!tradePrompt) { completed++; continue; }
+
+      await ctx.runMutation(internal.projects.updateGenerationProgressInternal, {
+        projectId: args.projectId,
+        total: trades.length,
+        completed,
+        current: TRADE_META[trade].title,
+        failed,
+      });
+
+      const combinedPrompt = masterSystemPrompt + "\n\n" + tradePrompt.replace("{{projectContext}}", projectContext);
+
+      let scope: Record<string, unknown> | null = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const result = await callGeminiText(apiKey, combinedPrompt);
+          scope = result as Record<string, unknown>;
+          break;
+        } catch (err) {
+          console.error(`[admin-regen] Trade ${trade} attempt ${attempt + 1} failed:`, err);
+          if (attempt === 0) await new Promise((r) => setTimeout(r, 2000));
+        }
+      }
+
+      if (!scope) { failed.push(trade); completed++; continue; }
+
+      const items = (scope.items as Array<Record<string, unknown>>) ?? [];
+      const validation = validateScope(
+        {
+          tradeType: trade,
+          title: (scope.title as string) ?? TRADE_META[trade].title,
+          items: items as never[],
+          exclusions: (scope.exclusions as string[]) ?? [],
+          pcSums: scope.pcSums as unknown[] | undefined,
+          complianceNotes: scope.complianceNotes as string | undefined,
+          warnings: scope.warnings as string[] | undefined,
+          notes: scope.notes as string | undefined,
+        },
+        projectType,
+        { suburb: project.propertySuburb, state: project.propertyState, type: project.propertyType, yearBuilt: project.propertyAge },
+        answers
+      );
+
+      if (validation.additions.length > 0) {
+        items.push(...(validation.additions as unknown as Record<string, unknown>[]));
+      }
+
+      await ctx.runMutation(internal.scopes.saveScopeInternal, {
+        projectId: args.projectId,
+        tradeType: trade,
+        title: (scope.title as string) ?? TRADE_META[trade].title,
+        items,
+        exclusions: scope.exclusions ?? [],
+        pcSums: scope.pcSums,
+        complianceNotes: scope.complianceNotes as string | undefined,
+        notes: scope.notes as string | undefined,
+        warnings: scope.warnings,
+        diyOption: scope.diyOption as string | undefined,
+        sortOrder: TRADE_META[trade].sortOrder,
+      });
+
+      scopeSummaries.push({
+        tradeType: trade,
+        title: (scope.title as string) ?? TRADE_META[trade].title,
+        itemCount: items.length,
+      });
+
+      completed++;
+    }
+
+    // Generate sequencing
+    try {
+      await generateSequencingPlan(ctx, apiKey, args.projectId, projectType, trades, scopeSummaries, projectContext);
+    } catch (err) { console.error("[admin-regen] Sequencing failed:", err); }
+
+    // Generate coordination
+    try {
+      await generateCoordinationChecklist(ctx, apiKey, args.projectId, scopeSummaries, projectContext);
+    } catch (err) { console.error("[admin-regen] Coordination failed:", err); }
+
+    // Set final status
+    await ctx.runMutation(internal.projects.updateProjectInternal, {
+      projectId: args.projectId,
+      updates: { status: "paid" },
+    });
+
+    await ctx.runMutation(internal.projects.updateGenerationProgressInternal, {
+      projectId: args.projectId,
+      total: trades.length,
+      completed: trades.length,
+      current: undefined,
+      failed,
+    });
+
+    console.log(`[admin-regen] Done. ${trades.length - failed.length}/${trades.length} succeeded. Failed: ${failed.join(", ") || "none"}`);
+  },
+});
+
+// =============================================================================
 // Retry Single Trade Scope
 // =============================================================================
 

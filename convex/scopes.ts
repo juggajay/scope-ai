@@ -134,13 +134,18 @@ export const saveScopeInternal = internalMutation({
     exclusions: v.any(),
     pcSums: v.optional(v.any()),
     complianceNotes: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    notes: v.optional(v.any()),
     warnings: v.optional(v.any()),
     diyOption: v.optional(v.string()),
     sortOrder: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("scopes", args);
+    // Normalize notes: if AI returns array of objects, join into a string
+    let notes = args.notes;
+    if (Array.isArray(notes)) {
+      notes = notes.map((n: { text?: string }) => typeof n === "string" ? n : n.text ?? JSON.stringify(n)).join("\n\n");
+    }
+    return await ctx.db.insert("scopes", { ...args, notes: notes as string | undefined });
   },
 });
 
