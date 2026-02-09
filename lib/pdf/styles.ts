@@ -209,6 +209,18 @@ export const styles = StyleSheet.create({
     color: RED,
     fontFamily: "Helvetica-Bold",
   },
+  customBadge: {
+    backgroundColor: TEAL_LIGHT,
+    borderRadius: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    marginLeft: 4,
+  },
+  customBadgeText: {
+    fontSize: 7,
+    color: TEAL,
+    fontFamily: "Helvetica-Bold",
+  },
 
   // Coordination
   coordRow: {

@@ -84,7 +84,14 @@ export function SingleTradeDocument({
               >
                 <Text style={styles.itemBullet}>•</Text>
                 <View style={styles.itemContent}>
-                  <Text style={styles.itemName}>{item.item}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text style={[styles.itemName, { flex: 1 }]}>{item.item}</Text>
+                    {item.isCustom && (
+                      <View style={styles.customBadge}>
+                        <Text style={styles.customBadgeText}>CUSTOM</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.itemSpec}>{item.specification}</Text>
                   {item.complianceNote && (
                     <Text style={styles.itemCompliance}>{item.complianceNote}</Text>

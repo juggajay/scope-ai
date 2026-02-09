@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { TRADE_META } from "@/lib/trades";
@@ -12,6 +12,7 @@ import { ScopeExclusions } from "./ScopeExclusions";
 import { PCSumsTable } from "./PCSumsTable";
 import { ScopeWarnings } from "./ScopeWarnings";
 import { ScopeNotes } from "./ScopeNotes";
+import { AddItemForm } from "./AddItemForm";
 import type { TradeType, ScopeItem, PCSum } from "@/types";
 
 interface TradeScopeProps {
@@ -28,14 +29,26 @@ interface TradeScopeProps {
     diyOption?: string;
   };
   onToggle: (scopeId: string, itemIndex: number, included: boolean) => void;
+  onEdit: (scopeId: string, itemIndex: number, item: string, specification: string) => void;
+  onAddItem: (scopeId: string, category: string, item: string, specification: string) => void;
+  onDelete: (scopeId: string, itemIndex: number) => void;
   onDownloadTrade?: (tradeType: string) => void;
   isDownloading?: boolean;
 }
 
-export function TradeScope({ scope, onToggle, onDownloadTrade, isDownloading }: TradeScopeProps) {
+export function TradeScope({
+  scope,
+  onToggle,
+  onEdit,
+  onAddItem,
+  onDelete,
+  onDownloadTrade,
+  isDownloading,
+}: TradeScopeProps) {
   const tradeType = scope.tradeType as TradeType;
   const meta = TRADE_META[tradeType];
   const items = scope.items ?? [];
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const includedCount = items.filter((it) => it.included).length;
 
@@ -50,8 +63,23 @@ export function TradeScope({ scope, onToggle, onDownloadTrade, isDownloading }: 
     return Array.from(map.entries());
   }, [items]);
 
+  const categoryNames = useMemo(() => groups.map(([cat]) => cat), [groups]);
+
   const handleToggle = (itemIndex: number, included: boolean) => {
     onToggle(scope._id, itemIndex, included);
+  };
+
+  const handleEdit = (itemIndex: number, item: string, specification: string) => {
+    onEdit(scope._id, itemIndex, item, specification);
+  };
+
+  const handleDelete = (itemIndex: number) => {
+    onDelete(scope._id, itemIndex);
+  };
+
+  const handleAdd = (category: string, item: string, specification: string) => {
+    onAddItem(scope._id, category, item, specification);
+    setShowAddForm(false);
   };
 
   return (
@@ -107,10 +135,31 @@ export function TradeScope({ scope, onToggle, onDownloadTrade, isDownloading }: 
               category={category}
               items={categoryItems}
               onToggle={handleToggle}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
             />
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Add custom item */}
+      {showAddForm ? (
+        <AddItemForm
+          existingCategories={categoryNames}
+          onAdd={handleAdd}
+          onCancel={() => setShowAddForm(false)}
+        />
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full border-dashed"
+          onClick={() => setShowAddForm(true)}
+        >
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add custom item
+        </Button>
+      )}
 
       {/* Exclusions */}
       <ScopeExclusions exclusions={scope.exclusions ?? []} />

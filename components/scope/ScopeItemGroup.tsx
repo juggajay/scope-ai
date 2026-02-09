@@ -7,12 +7,16 @@ interface ScopeItemGroupProps {
   category: string;
   items: (ScopeItem & { originalIndex: number })[];
   onToggle: (index: number, included: boolean) => void;
+  onEdit: (index: number, item: string, specification: string) => void;
+  onDelete: (index: number) => void;
 }
 
 export function ScopeItemGroup({
   category,
   items,
   onToggle,
+  onEdit,
+  onDelete,
 }: ScopeItemGroupProps) {
   return (
     <div>
@@ -26,6 +30,8 @@ export function ScopeItemGroup({
             item={item}
             index={item.originalIndex}
             onToggle={onToggle}
+            onEdit={onEdit}
+            onDelete={item.isCustom ? onDelete : undefined}
           />
         ))}
       </div>

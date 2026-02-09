@@ -120,6 +120,97 @@ export const getCoordinationChecklist = query({
   },
 });
 
+// Edit a scope item's name and/or specification
+export const editScopeItem = mutation({
+  args: {
+    scopeId: v.id("scopes"),
+    itemIndex: v.number(),
+    item: v.string(),
+    specification: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return;
+
+    const scope = await ctx.db.get(args.scopeId);
+    if (!scope) return;
+
+    const project = await ctx.db.get(scope.projectId);
+    if (!project || project.userId !== userId) return;
+
+    const items = Array.isArray(scope.items) ? [...scope.items] : [];
+    if (args.itemIndex >= 0 && args.itemIndex < items.length) {
+      items[args.itemIndex] = {
+        ...items[args.itemIndex],
+        item: args.item,
+        specification: args.specification,
+        isEdited: true,
+      };
+      await ctx.db.patch(args.scopeId, { items });
+    }
+  },
+});
+
+// Add a custom scope item to a trade scope
+export const addCustomScopeItem = mutation({
+  args: {
+    scopeId: v.id("scopes"),
+    category: v.string(),
+    item: v.string(),
+    specification: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return;
+
+    const scope = await ctx.db.get(args.scopeId);
+    if (!scope) return;
+
+    const project = await ctx.db.get(scope.projectId);
+    if (!project || project.userId !== userId) return;
+
+    const items = Array.isArray(scope.items) ? [...scope.items] : [];
+    const newItem = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      category: args.category,
+      item: args.item,
+      specification: args.specification,
+      included: true,
+      isCustom: true,
+    };
+    items.push(newItem);
+    await ctx.db.patch(args.scopeId, { items });
+  },
+});
+
+// Delete a custom scope item (server guards isCustom === true)
+export const deleteCustomScopeItem = mutation({
+  args: {
+    scopeId: v.id("scopes"),
+    itemIndex: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return;
+
+    const scope = await ctx.db.get(args.scopeId);
+    if (!scope) return;
+
+    const project = await ctx.db.get(scope.projectId);
+    if (!project || project.userId !== userId) return;
+
+    const items = Array.isArray(scope.items) ? [...scope.items] : [];
+    if (
+      args.itemIndex >= 0 &&
+      args.itemIndex < items.length &&
+      items[args.itemIndex].isCustom === true
+    ) {
+      items.splice(args.itemIndex, 1);
+      await ctx.db.patch(args.scopeId, { items });
+    }
+  },
+});
+
 // =============================================================================
 // Internal mutations — for AI actions
 // =============================================================================

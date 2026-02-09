@@ -89,6 +89,7 @@ export function ScopeViewShell({
     [projectType, suburb, state, generatedAt, scopes, sequencing, coordination]
   );
 
+  // --- Toggle item included/excluded ---
   const updateItem = useMutation(
     api.scopes.updateScopeItem
   ).withOptimisticUpdate((localStore, { scopeId, itemIndex, included }) => {
@@ -112,11 +113,114 @@ export function ScopeViewShell({
     }
   });
 
+  // --- Edit item text ---
+  const editItem = useMutation(
+    api.scopes.editScopeItem
+  ).withOptimisticUpdate((localStore, { scopeId, itemIndex, item, specification }) => {
+    const current = localStore.getQuery(api.scopes.getScopes, {
+      projectId: projectId as Id<"projects">,
+    });
+    if (current?.scopes) {
+      const updated = (current.scopes as ScopeData[]).map((s) => {
+        if (s._id === scopeId) {
+          const items = [...s.items];
+          items[itemIndex] = { ...items[itemIndex], item, specification, isEdited: true };
+          return { ...s, items };
+        }
+        return s;
+      });
+      localStore.setQuery(
+        api.scopes.getScopes,
+        { projectId: projectId as Id<"projects"> },
+        { ...current, scopes: updated } as any
+      );
+    }
+  });
+
+  // --- Add custom item ---
+  const addCustomItem = useMutation(
+    api.scopes.addCustomScopeItem
+  ).withOptimisticUpdate((localStore, { scopeId, category, item, specification }) => {
+    const current = localStore.getQuery(api.scopes.getScopes, {
+      projectId: projectId as Id<"projects">,
+    });
+    if (current?.scopes) {
+      const newItem: ScopeItem = {
+        id: `custom-optimistic-${Date.now()}`,
+        category,
+        item,
+        specification,
+        included: true,
+        isCustom: true,
+      };
+      const updated = (current.scopes as ScopeData[]).map((s) => {
+        if (s._id === scopeId) {
+          return { ...s, items: [...s.items, newItem] };
+        }
+        return s;
+      });
+      localStore.setQuery(
+        api.scopes.getScopes,
+        { projectId: projectId as Id<"projects"> },
+        { ...current, scopes: updated } as any
+      );
+    }
+  });
+
+  // --- Delete custom item ---
+  const deleteCustomItem = useMutation(
+    api.scopes.deleteCustomScopeItem
+  ).withOptimisticUpdate((localStore, { scopeId, itemIndex }) => {
+    const current = localStore.getQuery(api.scopes.getScopes, {
+      projectId: projectId as Id<"projects">,
+    });
+    if (current?.scopes) {
+      const updated = (current.scopes as ScopeData[]).map((s) => {
+        if (s._id === scopeId) {
+          const items = [...s.items];
+          items.splice(itemIndex, 1);
+          return { ...s, items };
+        }
+        return s;
+      });
+      localStore.setQuery(
+        api.scopes.getScopes,
+        { projectId: projectId as Id<"projects"> },
+        { ...current, scopes: updated } as any
+      );
+    }
+  });
+
   const handleToggle = (scopeId: string, itemIndex: number, included: boolean) => {
     updateItem({
       scopeId: scopeId as Id<"scopes">,
       itemIndex,
       included,
+    });
+  };
+
+  const handleEdit = (scopeId: string, itemIndex: number, item: string, specification: string) => {
+    editItem({
+      scopeId: scopeId as Id<"scopes">,
+      itemIndex,
+      item,
+      specification,
+    });
+  };
+
+  const handleAddItem = (scopeId: string, category: string, item: string, specification: string) => {
+    addCustomItem({
+      scopeId: scopeId as Id<"scopes">,
+      category,
+      item,
+      specification,
+    });
+  };
+
+  const handleDelete = (scopeId: string, itemIndex: number) => {
+    deleteCustomItem({
+      scopeId: scopeId as Id<"scopes">,
+      itemIndex,
     });
   };
 
@@ -166,6 +270,9 @@ export function ScopeViewShell({
             <TradeScope
               scope={activeScope}
               onToggle={handleToggle}
+              onEdit={handleEdit}
+              onAddItem={handleAddItem}
+              onDelete={handleDelete}
               onDownloadTrade={(tradeType) =>
                 downloadTradePdf(documentProps, tradeType)
               }

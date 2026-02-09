@@ -131,6 +131,8 @@ export interface ScopeItem {
   included: boolean; // default true — user can toggle off
   complianceNote?: string; // e.g. "Per AS/NZS 3000"
   note?: string; // additional context
+  isCustom?: boolean; // true for user-added items — shows badge, enables delete
+  isEdited?: boolean; // true when user modified item/spec text
 }
 
 // -----------------------------------------------------------------------------
