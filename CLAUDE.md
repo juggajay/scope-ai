@@ -190,6 +190,9 @@ lib/ai/validation.ts              — Post-generation validation rules
 lib/ai/prompts/master-system.md   — Master AI system prompt (shared across trades)
 lib/ai/prompts/photo-analysis.md  — Photo analysis prompt for Gemini Vision
 lib/sequencing/templates.ts       — Sequencing templates for all 5 project types
+lib/analytics.ts                  — PostHog analytics (trackEvent, identifyUser, useWizardAnalytics)
+components/posthog-provider.tsx   — PostHog init wrapper (no-op when env vars missing)
+components/scope/TrustSignals.tsx — Trust badges for paywall (Stripe, guarantee, AS/NZS 3000)
 ```
 
 **Do NOT rewrite these files.** They were carefully designed and reviewed. Use them as-is during integration.
@@ -251,6 +254,11 @@ Research output is in `research-output/`. Reference these during build:
 - Tiling: COMPLETE (8 files in `research-output/tiling/`)
 - Painting: COMPLETE (6 files in `research-output/painting/`)
 - Waterproofing: COMPLETE (6 files in `research-output/waterproofing/`)
+
+### Hooks & Retention
+- **Hooks & Retention: COMPLETE** (8 files in `research-output/hooks-retention/`)
+  - **`RESEARCH-skill-blueprint.md` — READ THIS for any user-facing feature.** Contains decision framework (4 gates), checklists per feature type, pattern library, anti-patterns.
+  - Audit found 26 patterns: 2 implemented, 8 partial, 16 missing. Week 1 (measurement + conversion) complete. Remaining patterns are Week 2+ (emails, escape options, micro-copy, post-purchase).
 
 Research prompts (what was sent to the researcher) are in `research-prompts/` for reference.
 

@@ -73,9 +73,9 @@ export function Hero() {
             }}
             className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:gap-4"
           >
-            <Button asChild size="lg" className="h-11 px-8 text-sm font-medium">
+            <Button asChild size="lg" className="h-12 px-8 text-base font-medium">
               <Link href="/create">
-                Start My Scope
+                Start My Scope — Free Preview
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Link>
             </Button>

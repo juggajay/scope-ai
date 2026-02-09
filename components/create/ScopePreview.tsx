@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, AlertTriangle, RotateCcw, Loader2 } from "lucide-react";
 import { useWizard } from "@/lib/wizard/WizardContext";
+import { useWizardAnalytics } from "@/lib/analytics";
 import { TRADE_META } from "@/lib/trades";
 import { PRICING_TIERS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TrustSignals } from "@/components/scope/TrustSignals";
 import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -15,6 +17,7 @@ import type { TradeType } from "@/types";
 
 export function ScopePreview() {
   const { state, dispatch } = useWizard();
+  const { trackWizardEvent } = useWizardAnalytics();
   const { projectType, propertyDetails, projectId } = state;
 
   const retryTradeScope = useAction(api.ai.retryTradeScope);
@@ -44,6 +47,22 @@ export function ScopePreview() {
     });
   }, [dispatch]);
 
+  // preview_viewed — fire when scopes load
+  const loadedScopes = scopeData?.scopes ?? [];
+  useEffect(() => {
+    if (loadedScopes.length > 0 && projectId) {
+      const totalItemCount = loadedScopes.reduce((sum, s) => {
+        const count = "itemCount" in s ? (s as { itemCount: number }).itemCount : 0;
+        return sum + count;
+      }, 0);
+      trackWizardEvent("preview_viewed", {
+        tradeCount: loadedScopes.length,
+        totalItemCount,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadedScopes.length, projectId]);
+
   if (!projectType) return null;
 
   const projectLabel = projectType.charAt(0).toUpperCase() + projectType.slice(1);
@@ -68,6 +87,7 @@ export function ScopePreview() {
 
   const handleSelectTier = async (tierId: string) => {
     if (!projectId) return;
+    trackWizardEvent("pricing_tier_selected", { tierId, projectType });
     setLoadingTier(tierId);
     setTierError(null);
     try {
@@ -76,6 +96,7 @@ export function ScopePreview() {
         tier: tierId as "starter" | "professional" | "premium",
       });
       if (url) {
+        trackWizardEvent("checkout_started", { tierId, projectType });
         window.location.href = url;
       }
     } catch (err) {
@@ -99,6 +120,20 @@ export function ScopePreview() {
           Unlock to access full specifications, sequencing, and PDF downloads.
         </p>
       </div>
+
+      {/* Total item count headline */}
+      {scopes.length > 0 && (
+        <p className="text-center text-base font-medium">
+          Your {projectLabel.toLowerCase()} renovation requires{" "}
+          <span className="font-semibold text-primary">
+            {scopes.reduce((sum, s) => {
+              const count = "itemCount" in s ? (s as { itemCount: number }).itemCount : 0;
+              return sum + count;
+            }, 0)} scope items
+          </span>{" "}
+          across {scopes.length} trades
+        </p>
+      )}
 
       {/* Trade summary cards — real data */}
       <div className="space-y-3">
@@ -143,11 +178,13 @@ export function ScopePreview() {
               {sampleItems.length > 0 && (
                 <ul className="mt-2 space-y-1 border-t border-border pt-2">
                   {sampleItems.slice(0, 2).map((item, j) => (
-                    <li
-                      key={j}
-                      className="text-xs text-muted-foreground"
-                    >
-                      · {item.item}
+                    <li key={j} className="text-xs text-muted-foreground">
+                      <span>· {item.item}</span>
+                      {item.specification && (
+                        <p className="ml-3 mt-0.5 text-[11px] text-muted-foreground/60 italic">
+                          {item.specification}
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -251,6 +288,7 @@ export function ScopePreview() {
             );
           })}
         </div>
+        <TrustSignals />
       </div>
     </div>
   );

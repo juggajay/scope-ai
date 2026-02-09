@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useWizard } from "@/lib/wizard/WizardContext";
+import { useWizardAnalytics } from "@/lib/analytics";
 import { getQuestionsForProject } from "@/lib/questions";
 import { questionVariants, ANIMATION } from "@/lib/animation-constants";
 import { QuestionIntro } from "./QuestionIntro";
@@ -13,7 +14,8 @@ import { GeneratePrompt } from "./GeneratePrompt";
 type Phase = "intro" | "questions" | "confirm";
 
 export function QuestionFlow() {
-  const { state, dispatch, goNext } = useWizard();
+  const { state, dispatch, goNext, setFooterOnNext } = useWizard();
+  const { trackWizardEvent } = useWizardAnalytics();
   const { projectType, answers, photos, mode } = state;
 
   const allQuestions = projectType ? getQuestionsForProject(projectType) : [];
@@ -83,6 +85,15 @@ export function QuestionFlow() {
         answer,
       });
 
+      trackWizardEvent("question_answered", {
+        questionId: currentQuestion.id,
+        answer,
+        isNotSure: answer === "Not sure" || answer === "not_sure",
+        autoAdvanced: !currentQuestion.multiSelect && typeof answer === "string",
+        questionIndex: questionIndex,
+        totalQuestions: total,
+      });
+
       if (!currentQuestion.multiSelect && typeof answer === "string") {
         if (timerRef.current) clearTimeout(timerRef.current);
         timerRef.current = setTimeout(() => {
@@ -121,25 +132,22 @@ export function QuestionFlow() {
     [questionIndex]
   );
 
-  // Listen for footer "Continue" on multi-select
+  // Override footer "Continue" to advance within questions (not wizard step)
   useEffect(() => {
-    if (
-      phase === "questions" &&
-      currentQuestion?.multiSelect &&
-      !state.footerDisabled
-    ) {
-      // The WizardContainer handles goNext for the wizard step,
-      // but for questions we need to handle it differently.
-      // We override the footer action via a custom handler.
+    if (phase === "questions" && currentQuestion?.multiSelect) {
+      setFooterOnNext(advanceToNext);
+    } else {
+      setFooterOnNext(null);
     }
-  }, [phase, currentQuestion, state.footerDisabled]);
+  }, [phase, currentQuestion?.multiSelect, advanceToNext, setFooterOnNext]);
 
   // Cleanup
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      setFooterOnNext(null);
     };
-  }, []);
+  }, [setFooterOnNext]);
 
   // Handle footer Continue for multi-select questions
   // We intercept the wizard's goNext by managing our own flow

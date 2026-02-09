@@ -2,6 +2,29 @@ import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
+// Pick the most impressive sample item for the paywall preview
+function pickBestSampleItem(
+  items: { item: string; specification: string; complianceNote?: string }[]
+): typeof items {
+  if (!items.length) return [];
+
+  const scored = items.map((scopeItem) => {
+    let score = 0;
+    if (scopeItem.complianceNote) score += 3;
+    if (scopeItem.specification && scopeItem.specification.length > 50) score += 2;
+    if (scopeItem.specification && /\d/.test(scopeItem.specification)) score += 1;
+    const lower = scopeItem.item.toLowerCase();
+    if (lower.startsWith("remove")) score -= 2;
+    if (lower.startsWith("strip")) score -= 2;
+    if (lower.startsWith("disconnect")) score -= 1;
+    if (lower.startsWith("protect")) score -= 1;
+    return { scopeItem, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return [scored[0].scopeItem];
+}
+
 // Get all scopes for a project — PAYWALL LOGIC:
 // If project is paid → return full scope data
 // If not paid → return summary only (trade name, item count, 1 sample item)
@@ -34,7 +57,7 @@ export const getScopes = query({
         title: scope.title,
         sortOrder: scope.sortOrder,
         itemCount: Array.isArray(scope.items) ? scope.items.length : 0,
-        sampleItems: Array.isArray(scope.items) ? scope.items.slice(0, 1) : [],
+        sampleItems: Array.isArray(scope.items) ? pickBestSampleItem(scope.items) : [],
       })),
     };
   },

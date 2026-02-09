@@ -9,6 +9,7 @@ import { ScopeSkeleton } from "@/components/scope/ScopeSkeleton";
 import { ScopeViewShell } from "@/components/scope/ScopeViewShell";
 import { PaywallGate } from "@/components/scope/PaywallGate";
 import { Loader2 } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 
 export default function ScopeViewPage() {
   const params = useParams();
@@ -44,6 +45,18 @@ export default function ScopeViewPage() {
       router.replace("/");
     }
   }, [authLoading, isAuthenticated, project, router]);
+
+  // payment_completed — fire once per project when paid
+  useEffect(() => {
+    if (project?.status !== "paid") return;
+    const key = `scopeai_payment_tracked_${projectId}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    trackEvent("payment_completed", {
+      projectId,
+      projectType: project.projectType,
+    });
+  }, [project?.status, project?.projectType, projectId]);
 
   // Loading state
   if (authLoading || project === undefined || scopeData === undefined) {

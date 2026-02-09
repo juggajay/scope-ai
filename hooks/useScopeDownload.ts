@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics";
 import type {
   ScopeItem,
   PCSum,
@@ -44,6 +45,7 @@ export function useScopeDownload() {
       const { generateFullScopePdf, getScopeFilename } = await import("@/lib/pdf/generate");
       const blob = await generateFullScopePdf(props);
       await saveBlob(blob, getScopeFilename(props.projectType));
+      trackEvent("scope_pdf_downloaded", { downloadType: "full", projectType: props.projectType });
       toast.success("PDF downloaded");
     } catch (err) {
       console.error("PDF generation failed:", err);
@@ -78,6 +80,7 @@ export function useScopeDownload() {
         notes: scope.notes,
       });
       await saveBlob(blob, getScopeFilename(props.projectType, tradeType));
+      trackEvent("scope_pdf_downloaded", { downloadType: "trade", tradeType, projectType: props.projectType });
       toast.success("PDF downloaded");
     } catch (err) {
       console.error("Trade PDF generation failed:", err);
@@ -94,6 +97,7 @@ export function useScopeDownload() {
       const blob = await generateScopeZip(props);
       const base = props.projectType.toLowerCase().replace(/\s+/g, "-");
       await saveBlob(blob, `scopeai-${base}-all-scopes.zip`);
+      trackEvent("scope_pdf_downloaded", { downloadType: "zip", projectType: props.projectType });
       toast.success("ZIP downloaded");
     } catch (err) {
       console.error("ZIP generation failed:", err);

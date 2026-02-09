@@ -5,15 +5,16 @@ import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft } from "lucide-react";
 import { useMutation, useAction } from "convex/react";
 import { useConvexAuth } from "convex/react";
+import { identifyUser } from "@/lib/analytics";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import { useWizard } from "@/lib/wizard/WizardContext";
 
 export function AuthGate() {
-  const { state, dispatch, goNext } = useWizard();
+  const { state, dispatch, goNext, goBack } = useWizard();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const { signIn } = useAuthActions();
 
@@ -104,6 +105,7 @@ export function AuthGate() {
     setIsSubmitting(true);
     try {
       await signIn("password", { email, password, flow });
+      identifyUser(email, { email, name: name || undefined });
       // Auth state will update → useEffect triggers createAndAdvance
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -140,6 +142,14 @@ export function AuthGate() {
         transition={{ duration: 0.3 }}
         className="w-full max-w-sm space-y-6"
       >
+        <button
+          onClick={goBack}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to questions
+        </button>
+
         <div className="space-y-2 text-center">
           <h2 className="text-xl font-semibold tracking-tight">
             {flow === "signUp" ? "Create a free account" : "Welcome back"}

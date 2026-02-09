@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useWizard } from "@/lib/wizard/WizardContext";
+import { useWizardAnalytics } from "@/lib/analytics";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { WizardProgress } from "./WizardProgress";
 import { WizardStepTransition } from "./WizardStepTransition";
@@ -19,11 +20,30 @@ import { GeneratingState } from "./GeneratingState";
 import { ScopePreview } from "./ScopePreview";
 
 export function WizardContainer() {
-  const { state, dispatch, goBack } = useWizard();
+  const { state, dispatch, goBack, footerOnNextRef } = useWizard();
   const { step, direction, isRestoredSession } = state;
+  const { trackWizardEvent } = useWizardAnalytics();
   const router = useRouter();
   const [showNavGuard, setShowNavGuard] = useState(false);
   const [showResume, setShowResume] = useState(false);
+  const prevStepRef = useRef(step);
+
+  // wizard_started — fires once when wizard page loads
+  useEffect(() => {
+    trackWizardEvent("wizard_started");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // wizard_step_completed — fires when step changes
+  useEffect(() => {
+    if (prevStepRef.current !== step) {
+      trackWizardEvent("wizard_step_completed", {
+        fromStep: prevStepRef.current,
+        toStep: step,
+      });
+      prevStepRef.current = step;
+    }
+  }, [step, trackWizardEvent]);
 
   // Show resume prompt on mount if session was restored
   useEffect(() => {
@@ -69,17 +89,23 @@ export function WizardContainer() {
   );
 
   const handleNavConfirm = () => {
+    trackWizardEvent("wizard_step_abandoned", { method: "nav_guard" });
     setShowNavGuard(false);
     router.push("/");
   };
 
   // Footer handlers
   const handleNext = () => {
-    dispatch({ type: "SET_STEP", step: step + 1, direction: 1 });
+    if (footerOnNextRef.current) {
+      footerOnNextRef.current();
+    } else {
+      dispatch({ type: "SET_STEP", step: step + 1, direction: 1 });
+    }
   };
 
   const handleBack = () => {
     if (step === 0) {
+      trackWizardEvent("wizard_step_abandoned", { method: "back_exit" });
       router.push("/");
     } else {
       goBack();

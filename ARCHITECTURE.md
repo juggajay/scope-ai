@@ -1,7 +1,7 @@
 # Architecture — ScopeAI
 
-**Last Updated:** 8 February 2026
-**Status:** Phase 9 complete — PDF generation (client-side), ZIP bundle, email delivery (Resend)
+**Last Updated:** 9 February 2026
+**Status:** Phase 10 complete + Week 1 hooks/retention (PostHog analytics, paywall conversion improvements)
 
 ---
 
@@ -406,21 +406,21 @@ STEP 7 — PREVIEW + PAYWALL (/create — step 5)
 │  │ ✓ SCOPE PACKAGE READY                                │
 │  │ Kitchen Renovation — Paddington, NSW                  │
 │  │                                                       │
-│  │ Your package contains:                                │
+│  │ Your kitchen renovation requires                      │
+│  │   53 scope items across 7 trades                      │
+│  │                                                       │
 │  │ ⚡ Electrical — 11 scope items                        │
+│  │    · New dedicated circuit for wall oven              │
+│  │      32A circuit, 6mm² cable from switchboard...      │
 │  │ 🔧 Plumbing — 7 scope items                          │
 │  │ 🔨 Demolition — 8 scope items                        │
 │  │ 🪚 Carpentry — 8 scope items                         │
 │  │ 🔲 Tiling — 6 scope items                            │
 │  │ 🪨 Stone Benchtop — 7 scope items                    │
 │  │ 🎨 Painting — 6 scope items                          │
-│  │ 📅 Sequencing Plan — 15 phases                       │
-│  │ ✅ Coordination Checklist                             │
-│  │                                                       │
-│  │ Sample: "New dedicated circuit for wall oven —        │
-│  │         32A circuit, 6mm² cable from switchboard..."  │
 │  │                                                       │
 │  │ [Unlock Full Scope — $49 / $99 / $149]               │
+│  │ 🔒 Secure payment  🛡️ 14-day guarantee  📋 AS/NZS   │
 │  └──────────────────────────────────────────────────────┘
 │
 │  → User selects tier and clicks "Unlock"
@@ -548,8 +548,11 @@ AFTER AUTH (Steps 6+):
 FREE (before payment):
   ✓ Trade names and icons
   ✓ Item COUNT per trade (e.g. "11 scope items")
-  ✓ 1-2 SAMPLE items per trade (first item, shown in full)
+  ✓ Total item count headline ("53 scope items across 7 trades")
+  ✓ 1 BEST sample item per trade (scored by quality, not just first)
+  ✓ Sample item specification shown (italic detail text)
   ✓ Total number of trades identified
+  ✓ Trust signals below pricing (Stripe, 14-day guarantee, AS/NZS 3000)
   ✓ Sequencing plan exists (but not viewable)
   ✓ Coordination checklist exists (but not viewable)
   ✗ Full scope items — HIDDEN
@@ -574,7 +577,9 @@ PAID (after payment):
 HOW THIS WORKS IN CODE:
   → getScopes() query checks project.status
   → If status !== "paid": returns summary only
-    { tradeType, title, itemCount, sampleItems: items.slice(0, 1) }
+    { tradeType, title, itemCount, sampleItems: pickBestSampleItem(items) }
+    pickBestSampleItem() scores items: compliance notes +3, detailed spec +2,
+    numbers in spec +1, generic removal items -2
   → If status === "paid": returns full scope data
 ```
 
@@ -919,6 +924,7 @@ scope-ai/
 │   └── terms/page.tsx
 │
 ├── components/
+│   ├── posthog-provider.tsx           # "use client" PostHog init (no-op if env vars missing)
 │   ├── ui/                           # shadcn/ui components (button, card, tabs, etc.)
 │   ├── create/                       # Creation flow step components
 │   │   ├── WizardContainer.tsx       # Orchestrator: URL sync, navigation, footer bar
@@ -962,14 +968,16 @@ scope-ai/
 │   │   ├── SequencingPlan.tsx       # Vertical timeline with hold points
 │   │   ├── CoordinationChecklist.tsx # Trade coordination with critical flags
 │   │   ├── ScopeSkeleton.tsx        # Pulse skeleton loading state
-│   │   └── PaywallGate.tsx          # Unpaid view: trade summaries + pricing tiers
+│   │   ├── PaywallGate.tsx          # Unpaid view: trade summaries + pricing tiers
+│   │   └── TrustSignals.tsx         # Stripe/guarantee/compliance trust badges
 │   └── layout/                       # Shared layout components
 │       ├── Header.tsx
 │       ├── Footer.tsx
 │       └── ThemeToggle.tsx
 │
 ├── hooks/
-│   └── useUnsavedChangesWarning.ts   # beforeunload when wizard in progress
+│   ├── useUnsavedChangesWarning.ts   # beforeunload when wizard in progress
+│   └── useScopeDownload.ts           # PDF/ZIP download with analytics events
 │
 ├── convex/                           # Convex backend
 │   ├── schema.ts                     # Database schema (see section 3)
@@ -985,6 +993,7 @@ scope-ai/
 │   └── auth.config.ts                # Auth config (auto-generated by @convex-dev/auth)
 │
 ├── lib/
+│   ├── analytics.ts                  # PostHog: trackEvent(), identifyUser(), useWizardAnalytics()
 │   ├── animation-constants.ts        # All animation durations, easings, spring configs
 │   ├── wizard/
 │   │   ├── WizardContext.tsx          # React Context + useReducer + localStorage
@@ -1051,7 +1060,7 @@ scope-ai/
 | Photo analysis | Immediate on upload, background | Runs during question step — by generation time, analysis is ready. Not a hard dependency |
 | Question sets | Static per project type | Simple, predictable. AI adaptation of questions is a V2 feature |
 | Sequencing plan | Hybrid (template + AI) | Template provides correct trade order. AI fills project-specific durations, notes, warnings |
-| Paywall content | Summary only (not full scopes) | Trade names + item counts + 1 sample item. Maximises conversion while showing quality |
+| Paywall content | Summary only (not full scopes) | Trade names + item counts + 1 best-scored sample item with specification + total headline + trust signals. Maximises conversion while showing quality |
 | Error recovery | Save partial + auto-retry + manual retry | Each trade saved independently. Auto-retry once on failure. Manual retry button for persistent failures |
 | Scope editing | Toggles affect PDF | Users customise scope before downloading. PDF only includes items where included === true |
 | MVP project scope | Single room only | Kitchen, Bathroom, Laundry, Living, Outdoor. No multi-room or Extension until V2 |

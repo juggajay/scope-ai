@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, Lock, Loader2 } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
+import { TrustSignals } from "@/components/scope/TrustSignals";
 import { PRICING_TIERS } from "@/lib/constants";
 import { TRADE_META } from "@/lib/trades";
 import { Button } from "@/components/ui/button";
@@ -40,7 +42,20 @@ export function PaywallGate({
   const label = projectType.charAt(0).toUpperCase() + projectType.slice(1);
   const location = [suburb, state].filter(Boolean).join(", ");
 
+  // preview_viewed
+  useEffect(() => {
+    if (scopes.length > 0) {
+      trackEvent("preview_viewed", {
+        projectId,
+        projectType,
+        tradeCount: scopes.length,
+        totalItemCount: scopes.reduce((sum, s) => sum + s.itemCount, 0),
+      });
+    }
+  }, [projectId, projectType, scopes]);
+
   const handleSelectTier = async (tierId: string) => {
+    trackEvent("pricing_tier_selected", { tierId, projectType, projectId });
     setLoadingTier(tierId);
     setError(null);
     try {
@@ -49,6 +64,7 @@ export function PaywallGate({
         tier: tierId as "starter" | "professional" | "premium",
       });
       if (url) {
+        trackEvent("checkout_started", { tierId, projectType, projectId });
         window.location.href = url;
       }
     } catch (err) {
@@ -71,6 +87,17 @@ export function PaywallGate({
           Unlock to access full specifications, toggle items, and download PDFs.
         </p>
       </div>
+
+      {/* Total item count headline */}
+      {scopes.length > 0 && (
+        <p className="text-center text-base font-medium">
+          Your {label.toLowerCase()} renovation requires{" "}
+          <span className="font-semibold text-primary">
+            {scopes.reduce((sum, s) => sum + s.itemCount, 0)} scope items
+          </span>{" "}
+          across {scopes.length} trades
+        </p>
+      )}
 
       {/* Trade summary cards */}
       <div className="space-y-3">
@@ -102,7 +129,12 @@ export function PaywallGate({
                 <ul className="mt-2 space-y-1 border-t border-border pt-2">
                   {scope.sampleItems.slice(0, 1).map((item, j) => (
                     <li key={j} className="text-xs text-muted-foreground">
-                      &middot; {item.item}
+                      <span>&middot; {item.item}</span>
+                      {item.specification && (
+                        <p className="ml-3 mt-0.5 text-[11px] text-muted-foreground/60 italic">
+                          {item.specification}
+                        </p>
+                      )}
                     </li>
                   ))}
                   <li className="text-xs text-muted-foreground/60 italic">
@@ -178,6 +210,7 @@ export function PaywallGate({
             );
           })}
         </div>
+        <TrustSignals />
       </div>
     </div>
   );

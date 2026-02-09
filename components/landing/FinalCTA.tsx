@@ -33,10 +33,10 @@ export function FinalCTA() {
                 <Button
                   asChild
                   size="lg"
-                  className="h-11 px-8 text-sm font-medium"
+                  className="h-12 px-8 text-base font-medium"
                 >
                   <Link href="/create">
-                    Start My Scope
+                    Start My Scope — Free Preview
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </Link>
                 </Button>

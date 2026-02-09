@@ -1,7 +1,7 @@
 # Build Plan — ScopeAI
 
-**Last Updated:** 8 February 2026
-**Status:** Phases 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 complete
+**Last Updated:** 9 February 2026
+**Status:** Phases 0-10 complete + Week 1 hooks/retention complete
 
 > This is the step-by-step implementation plan. Each phase has tasks with acceptance criteria.
 > An AI dev instance should work through phases in order. Some tasks within a phase can be parallelised.
@@ -691,6 +691,49 @@ npm install -D @types/node
 - **Acceptance:** Pages exist and are linked from footer
 
 **Phase 10 complete when:** Dashboard works, app is polished on mobile, error states handled, SEO configured.
+
+**Status: COMPLETE** (8 February 2026)
+
+---
+
+## Week 1: Measurement + Conversion (Hooks & Retention)
+
+**Goal:** PostHog analytics foundation + highest-impact conversion fixes from hooks-and-retention research audit.
+
+**Research input:** `research-output/hooks-retention/` (8 files — Hook Model, Retention Loops, Skill Blueprint)
+
+### W1.1 PostHog Analytics
+- Installed `posthog-js`, created `lib/analytics.ts` (trackEvent, identifyUser, useWizardAnalytics)
+- Created `components/posthog-provider.tsx` — graceful no-op when env vars missing
+- Wired into `components/providers.tsx`
+- **10 Priority 1 events:** wizard_started, wizard_step_completed, wizard_step_abandoned, photo_uploaded, question_answered, preview_viewed, pricing_tier_selected, checkout_started, payment_completed, scope_pdf_downloaded
+- `posthog.identify()` in AuthGate after sign-in
+- **Files:** `lib/analytics.ts` (NEW), `components/posthog-provider.tsx` (NEW), `components/providers.tsx`, `WizardContainer.tsx`, `PhotoUpload.tsx`, `QuestionFlow.tsx`, `ScopePreview.tsx`, `PaywallGate.tsx`, `AuthGate.tsx`, `useScopeDownload.ts`, `scope/[projectId]/page.tsx`
+
+### W1.2 Trust Signals at Paywall
+- Created `components/scope/TrustSignals.tsx` — Stripe badge, 14-day guarantee, AS/NZS 3000
+- Inserted in both ScopePreview and PaywallGate after pricing grid
+
+### W1.3 Sample Item Scoring
+- `convex/scopes.ts` — replaced `slice(0, 1)` with `pickBestSampleItem()` scoring function
+- Scores: compliance notes +3, detailed spec +2, numbers in spec +1, generic removal items -2
+
+### W1.4 Total Item Count Headline
+- Added "Your {type} renovation requires **X scope items** across Y trades" to ScopePreview and PaywallGate
+
+### W1.5 Specification Display in Sample Items
+- Sample items now show specification text (italic, smaller) below the item name
+
+### W1.6 AuthGate Back Button
+- Added "Back to questions" link with ChevronLeft above auth form — users no longer trapped at step 4
+
+### W1.7 Hero + FinalCTA Refinement
+- CTA text: "Start My Scope" → "Start My Scope — Free Preview"
+- Button: h-11 → h-12 (48px), text-sm → text-base
+
+**Week 1 complete when:** All events fire in dev (verify via network tab), trust signals/headlines/specs visible, AuthGate has back button, CTA updated, `npm run build` passes, E2E tests pass.
+
+**Status: COMPLETE** (9 February 2026)
 
 ---
 

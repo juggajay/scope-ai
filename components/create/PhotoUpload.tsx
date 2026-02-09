@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useWizard, type PhotoMeta } from "@/lib/wizard/WizardContext";
+import { useWizardAnalytics } from "@/lib/analytics";
 import { PhotoUploadZone } from "./PhotoUploadZone";
 import { PhotoCounter } from "./PhotoCounter";
 import { PhotoTips } from "./PhotoTips";
@@ -13,6 +14,7 @@ import { PHOTO_MIN_COUNT } from "@/lib/constants";
 
 export function PhotoUpload() {
   const { state, dispatch } = useWizard();
+  const { trackWizardEvent } = useWizardAnalytics();
   const { photos, projectType, sessionId } = state;
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +24,21 @@ export function PhotoUpload() {
 
   const hasMin = photos.filter((p) => p.status !== "failed").length >= PHOTO_MIN_COUNT;
   const hasUploading = photos.some((p) => p.status === "uploading");
+
+  // Track photo_uploaded when a photo transitions to complete
+  const prevCompleteCountRef = useRef(
+    photos.filter((p) => p.status === "complete").length
+  );
+  useEffect(() => {
+    const completeCount = photos.filter((p) => p.status === "complete").length;
+    if (completeCount > prevCompleteCountRef.current) {
+      const newPhotos = completeCount - prevCompleteCountRef.current;
+      for (let i = 0; i < newPhotos; i++) {
+        trackWizardEvent("photo_uploaded", { totalPhotos: completeCount });
+      }
+    }
+    prevCompleteCountRef.current = completeCount;
+  }, [photos, trackWizardEvent]);
 
   // Configure footer
   useEffect(() => {
